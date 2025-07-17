@@ -1,0 +1,294 @@
+import { StatusBar } from 'expo-status-bar';
+import React, { useState, useCallback, useEffect } from 'react';
+import { StyleSheet, View } from 'react-native';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import {
+  Provider as PaperProvider,
+  MD3LightTheme,
+  MD3DarkTheme,
+  adaptNavigationTheme,
+  useTheme,
+  Surface,
+  Text,
+  Switch,
+  IconButton,
+} from 'react-native-paper';
+import { Button } from './src/components/Button';
+import { PlayerCountSelector } from './src/components/PlayerCountSelector';
+import { Timer } from './src/components/Timer';
+import {
+  LOCATIONS,
+  MIN_PLAYERS,
+  MAX_PLAYERS,
+  DEFAULT_TIMER_SECONDS,
+  LIGHT_THEME,
+  DARK_THEME
+} from './src/data/constants';
+import { GameState, Theme } from './src/types';
+
+const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+  },
+  container: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 20,
+  },
+  title: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    marginBottom: 30,
+    textAlign: 'center',
+  },
+  roleText: {
+    fontSize: 24,
+    marginVertical: 30,
+    textAlign: 'center',
+  },
+  themeToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    position: 'absolute',
+    top: 40,
+    right: 20,
+  },
+  themeText: {
+    marginRight: 10,
+    fontSize: 16,
+  },
+});
+
+const lightTheme = {
+  ...MD3LightTheme,
+  colors: {
+    ...MD3LightTheme.colors,
+    primary: '#4CAF50',
+    secondary: '#2196F3',
+  },
+};
+
+const darkTheme = {
+  ...MD3DarkTheme,
+  colors: {
+    ...MD3DarkTheme.colors,
+    primary: '#1db954',
+    secondary: '#2196F3',
+  },
+};
+
+export default function App() {
+  const paperTheme = useTheme();
+  const [gameState, setGameState] = useState<GameState>({
+    isGameStarted: false,
+    numberOfPlayers: 3,
+    currentPlayerIndex: -1,
+    locations: LOCATIONS,
+    selectedLocation: '',
+    spyIndex: -1,
+    showRole: false,
+    timerSeconds: DEFAULT_TIMER_SECONDS,
+    isTimerRunning: false,
+    isDarkMode: false
+  });
+
+  const theme: Theme = gameState.isDarkMode ? DARK_THEME : LIGHT_THEME;
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (gameState.isTimerRunning && gameState.timerSeconds > 0) {
+      interval = setInterval(() => {
+        setGameState(prev => ({
+          ...prev,
+          timerSeconds: prev.timerSeconds - 1
+        }));
+      }, 1000);
+    }
+    return () => {
+      if (interval) {
+        clearInterval(interval);
+      }
+    };
+  }, [gameState.isTimerRunning]);
+
+  const startGame = useCallback(() => {
+    const randomLocation = LOCATIONS[Math.floor(Math.random() * LOCATIONS.length)];
+    const randomSpyIndex = Math.floor(Math.random() * gameState.numberOfPlayers);
+
+    setGameState(prev => ({
+      ...prev,
+      isGameStarted: true,
+      currentPlayerIndex: 0,
+      selectedLocation: randomLocation,
+      spyIndex: randomSpyIndex,
+      showRole: false,
+      timerSeconds: DEFAULT_TIMER_SECONDS,
+      isTimerRunning: false
+    }));
+  }, [gameState.numberOfPlayers]);
+
+  const showNextPlayer = useCallback(() => {
+    setGameState(prev => ({
+      ...prev,
+      currentPlayerIndex: prev.currentPlayerIndex + 1,
+      showRole: false,
+    }));
+  }, []);
+
+  const revealRole = useCallback(() => {
+    setGameState(prev => ({
+      ...prev,
+      showRole: true,
+    }));
+  }, []);
+
+  const resetGame = useCallback(() => {
+    setGameState(prev => ({
+      ...prev,
+      isGameStarted: false,
+      currentPlayerIndex: -1,
+      showRole: false,
+      timerSeconds: DEFAULT_TIMER_SECONDS,
+      isTimerRunning: false
+    }));
+  }, []);
+
+  const toggleTimer = useCallback(() => {
+    setGameState(prev => ({
+      ...prev,
+      isTimerRunning: !prev.isTimerRunning
+    }));
+  }, []);
+
+  const resetTimer = useCallback(() => {
+    setGameState(prev => ({
+      ...prev,
+      timerSeconds: DEFAULT_TIMER_SECONDS,
+      isTimerRunning: false
+    }));
+  }, []);
+
+  const toggleTheme = useCallback(() => {
+    setGameState(prev => ({
+      ...prev,
+      isDarkMode: !prev.isDarkMode
+    }));
+  }, []);
+
+  const incrementPlayers = useCallback(() => {
+    setGameState(prev => ({
+      ...prev,
+      numberOfPlayers: Math.min(prev.numberOfPlayers + 1, MAX_PLAYERS),
+    }));
+  }, []);
+
+  const decrementPlayers = useCallback(() => {
+    setGameState(prev => ({
+      ...prev,
+      numberOfPlayers: Math.max(prev.numberOfPlayers - 1, MIN_PLAYERS),
+    }));
+  }, []);
+
+  const renderContent = () => {
+    if (!gameState.isGameStarted) {
+      return (
+        <Surface style={styles.container}>
+          <View style={styles.themeToggle}>
+            <IconButton
+              icon={gameState.isDarkMode ? 'weather-night' : 'weather-sunny'}
+              size={24}
+              onPress={toggleTheme}
+            />
+          </View>
+          <Text variant="displayMedium" style={styles.title}>Spy Game</Text>
+          <PlayerCountSelector
+            count={gameState.numberOfPlayers}
+            onIncrement={incrementPlayers}
+            onDecrement={decrementPlayers}
+          />
+          <Button
+            title="Start Game"
+            onPress={startGame}
+            mode="contained"
+            icon="play"
+          />
+        </Surface>
+      );
+    }
+
+    if (gameState.currentPlayerIndex >= gameState.numberOfPlayers) {
+      return (
+        <Surface style={styles.container}>
+          <Text variant="displaySmall" style={styles.title}>
+            Let the discussion begin!
+          </Text>
+          <Timer seconds={gameState.timerSeconds} />
+          <Button
+            title={gameState.isTimerRunning ? "Pause Timer" : "Start Timer"}
+            onPress={toggleTimer}
+            mode="contained"
+            icon={gameState.isTimerRunning ? "pause" : "play"}
+          />
+          <Button
+            title="Reset Timer"
+            onPress={resetTimer}
+            mode="outlined"
+            icon="refresh"
+          />
+          <Button
+            title="Start New Game"
+            onPress={resetGame}
+            mode="contained"
+            icon="restart"
+          />
+        </Surface>
+      );
+    }
+
+    return (
+      <Surface style={styles.container}>
+        <Text variant="headlineMedium" style={styles.title}>
+          Player {gameState.currentPlayerIndex + 1}'s Turn
+        </Text>
+        {!gameState.showRole ? (
+          <Button
+            title="Reveal Role"
+            onPress={revealRole}
+            mode="contained"
+            icon="eye"
+          />
+        ) : (
+          <>
+            <Surface style={styles.roleCard} elevation={2}>
+              <Text variant="headlineSmall" style={styles.roleText}>
+                {gameState.currentPlayerIndex === gameState.spyIndex
+                  ? "You are the Spy!"
+                  : `Location: ${gameState.selectedLocation}`}
+              </Text>
+            </Surface>
+            <Button
+              title="Next Player"
+              onPress={showNextPlayer}
+              mode="contained"
+              icon="arrow-right"
+            />
+          </>
+        )}
+      </Surface>
+    );
+  };
+
+  const theme = gameState.isDarkMode ? darkTheme : lightTheme;
+
+  return (
+    <PaperProvider theme={theme}>
+      <SafeAreaProvider>
+        <SafeAreaView style={styles.safeArea}>
+          {renderContent()}
+          <StatusBar style={gameState.isDarkMode ? "light" : "dark"} />
+        </SafeAreaView>
+      </SafeAreaProvider>
+    </PaperProvider>
+  );
+}

@@ -1,0 +1,32 @@
+{
+  "expo": {
+    "name": "spy-game",
+    "slug": "spy-game",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/spy-logo.png",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/spy-logo.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#121212"
+    },
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/spy-logo.png",
+        "backgroundColor": "#ffffff"
+      },
+      "edgeToEdgeEnabled": true
+    },
+    "web": {
+      "favicon": "./assets/spy-logo.png"
+    },
+    "plugins": [
+      "expo-asset"
+    ]
+  }
+}
